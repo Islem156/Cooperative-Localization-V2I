@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline · Cooperative Localization · ESTACA × VEDECOM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syncopate:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #04070a;
+    --bg-panel:      #0a0f14;
+    --bg-panel-2:    #10161d;
+    --bg-elevated:   #161d26;
+    --border:        #1f2833;
+    --border-soft:   #161d26;
+    --text-primary:  #e8eef5;
+    --text-secondary:#8a96a6;
+    --text-muted:    #4d5968;
+    --accent:        #00d4ff;
+    --accent-2:      #00ff9d;
+    --accent-3:      #ff4488;
+    --accent-glow:   rgba(0, 212, 255, 0.4);
+    --gps-color:     #4a9eff;
+    --infra-color:   #22c55e;
+    --gt-color:      #ef4444;
+    --grid:          #0f1620;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg-deep); color: var(--text-primary); font-family: 'Space Grotesk', sans-serif; overflow: hidden; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  .landing {
+    position: fixed; inset: 0; z-index: 100;
+    background:
+      linear-gradient(135deg, rgba(4, 7, 10, 0.88) 0%, rgba(4, 7, 10, 0.75) 50%, rgba(4, 7, 10, 0.92) 100%),
+      url('background.jpg') center/cover no-repeat;
+    display: flex; flex-direction: column;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    overflow: hidden;
+  }
+  .landing.hidden { opacity: 0; pointer-events: none; transform: scale(1.02); }
+  
+  .landing::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: 
+      radial-gradient(ellipse at 20% 30%, rgba(0, 212, 255, 0.08), transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(34, 197, 94, 0.06), transparent 50%);
+    mix-blend-mode: screen;
+  }
+  
+  .landing::after {
+    content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scanline 4s linear infinite;
+    z-index: 2;
+    opacity: 0.6;
+  }
+  @keyframes scanline { 
+    0% { transform: translateY(0); }
+    100% { transform: translateY(100vh); }
+  }
+
+  .landing-top {
+    padding: 28px 48px; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative; z-index: 3;
+    backdrop-filter: blur(6px);
+    background: linear-gradient(to bottom, rgba(4,7,10,0.5), transparent);
+  }
+  .logo-group { display: flex; align-items: center; gap: 18px; }
+  .hex-logo {
+    width: 38px; height: 38px; position: relative;
+    animation: hex-spin 20s linear infinite;
+  }
+  @keyframes hex-spin { to { transform: rotate(360deg); } }
+  .hex-logo::before, .hex-logo::after {
+    content: ''; position: absolute; inset: 0; border: 1.5px solid var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+  .hex-logo::before { box-shadow: 0 0 20px var(--accent-glow); }
+  .hex-logo::after { inset: 6px; opacity: 0.5; transform: rotate(30deg); }
+  
+  .logo-text h1 { 
+    font-family: 'Syncopate', sans-serif; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-primary);
+  }
+  .logo-text p {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; 
+    color: var(--text-secondary); letter-spacing: 0.25em; text-transform: uppercase;
+    margin-top: 2px;
+  }
+  
+  .status-stripe {
+    display: flex; gap: 32px; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em; color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+  .status-stripe div { display: flex; align-items: center; gap: 8px; }
+  .status-stripe .dot { 
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent-2);
+    box-shadow: 0 0 8px var(--accent-2);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .landing-main {
+    flex: 1; display: grid; grid-template-columns: 1.1fr 0.9fr;
+    align-items: center; padding: 0 48px; gap: 60px;
+    position: relative; z-index: 3;
+  }
+
+  .landing-left { 
+    display: flex; flex-direction: column; gap: 32px;
+    animation: slideInLeft 0.8s ease-out;
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  .tag-line {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;
+    width: fit-content;
+  }
+  .tag-line::before { 
+    content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .landing-title {
+    font-family: 'Syncopate', sans-serif;
+    font-size: clamp(38px, 5vw, 68px);
+    font-weight: 700; line-height: 1.02; letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .landing-title .t1 { color: var(--text-primary); }
+  .landing-title .t2 { 
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+  }
+  .landing-title .t3 {
+    color: var(--text-secondary); font-size: 0.5em; font-weight: 400;
+    letter-spacing: 0.15em; display: block; margin-top: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  
+  .landing-subtitle {
+    font-size: 14px; color: var(--text-secondary); line-height: 1.7;
+    max-width: 500px;
+  }
+  .landing-subtitle strong { color: var(--text-primary); font-weight: 500; }
+
+  .author-block {
+    display: flex; gap: 24px; padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .author-info { display: flex; flex-direction: column; gap: 4px; }
+  .author-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--text-muted); letter-spacing: 0.2em; text-transform: uppercase;
+  }
+  .author-name {
+    font-size: 15px; font-weight: 500; color: var(--text-primary);
+    letter-spacing: 0.02em;
+  }
+  .author-role {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--accent); letter-spacing: 0.1em;
+  }
+  .author-separator { 
+    width: 1px; background: rgba(255,255,255,0.1);
+  }
+
+  .landing-right {
+    animation: slideInRight 0.9s ease-out;
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  
+  .select-panel {
+    background: linear-gradient(135deg, rgba(10, 15, 20, 0.85) 0%, rgba(16, 22, 29, 0.85) 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(24px) saturate(160%);
+    padding: 36px; border-radius: 4px;
+    position: relative;
+    box-shadow: 
+      0 24px 48px rgba(0,0,0,0.5),
+      0 0 0 1px rgba(0, 212, 255, 0.1),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .select-panel::before {
+    content: ''; position: absolute; left: 0; top: 0; width: 60%; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .select-panel::after {
+    content: ''; position: absolute; right: 0; bottom: 0; width: 40%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-2));
+  }
+  
+  .select-panel h3 {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-muted); letter-spacing: 0.25em; text-transform: uppercase;
+    margin-bottom: 24px; display: flex; align-items: center; gap: 10px;
+  }
+  .select-panel h3::after {
+    content: ''; flex: 1; height: 1px; 
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  .step { margin-bottom: 22px; }
+  .step-label {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .step-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg-deep); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+    color: var(--text-muted); transition: 0.3s;
+  }
+  .step.active .step-num { 
+    background: var(--accent); color: var(--bg-deep); 
+    border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow);
+  }
+  .step.done .step-num { 
+    background: var(--accent-2); color: var(--bg-deep); 
+    border-color: var(--accent-2);
+  }
+  .step-title {
+    font-size: 11px; font-weight: 500; color: var(--text-secondary);
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .step.active .step-title { color: var(--text-primary); }
+
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip {
+    flex: 1; min-width: 80px; padding: 12px 14px;
+    background: var(--bg-deep); border: 1px solid var(--border);
+    border-radius: 3px; cursor: pointer; transition: 0.2s;
+    text-align: center; user-select: none;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-secondary); position: relative;
+  }
+  .chip.disabled { opacity: 0.3; cursor: not-allowed; }
+  .chip:not(.disabled):hover { 
+    border-color: var(--accent); color: var(--text-primary);
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg-deep));
+  }
+  .chip.selected {
+    border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg-deep));
+    box-shadow: 0 0 0 1px var(--accent), 0 0 16px var(--accent-glow);
+  }
+  .chip-big {
+    padding: 18px 14px; font-size: 14px; font-weight: 600;
+    font-family: 'Syncopate', sans-serif; letter-spacing: 0.15em;
+  }
+  .chip-badge {
+    display: block; font-size: 9px; font-family: 'JetBrains Mono', monospace;
+    color: var(--text-muted); margin-top: 4px; letter-spacing: 0.1em;
+  }
+  .chip.selected .chip-badge { color: var(--accent); opacity: 0.8; }
+
+  .seq-select {
+    width: 100%; padding: 12px 14px; background: var(--bg-deep);
+    border: 1px solid var(--border); color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    border-radius: 3px; cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 5l3 3 3-3' stroke='%2300d4ff' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 38px; transition: 0.2s;
+  }
+  .seq-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .seq-select:disabled { opacity: 0.3; cursor: not-allowed; }
+  .seq-select option { background: var(--bg-panel-2); }
+
+  .launch-btn {
+    width: 100%; margin-top: 8px; padding: 16px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: var(--bg-deep); border: none; cursor: pointer;
+    font-family: 'Syncopate', sans-serif; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    border-radius: 3px; transition: 0.3s;
+    position: relative; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3);
+  }
+  .launch-btn:disabled {
+    background: var(--bg-elevated); color: var(--text-muted); cursor: not-allowed;
+    box-shadow: none;
+  }
+  .launch-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 212, 255, 0.5);
+  }
+  .launch-btn:not(:disabled)::before {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: 0.6s;
+  }
+  .launch-btn:not(:disabled):hover::before { left: 100%; }
+
+  .loading-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: var(--bg-deep);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .loading-overlay.show { opacity: 1; pointer-events: all; }
+  .loader-hex {
+    width: 60px; height: 60px; position: relative;
+  }
+  .loader-hex div {
+    position: absolute; inset: 0; border: 2px solid var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: loader-pulse 1.5s ease-in-out infinite;
+  }
+  .loader-hex div:nth-child(2) { animation-delay: 0.3s; opacity: 0.6; }
+  .loader-hex div:nth-child(3) { animation-delay: 0.6s; opacity: 0.3; }
+  @keyframes loader-pulse {
+    0% { transform: scale(0.8); opacity: 0.8; }
+    50% { transform: scale(1.1); opacity: 0.3; }
+    100% { transform: scale(0.8); opacity: 0.8; }
+  }
+  .loading-text {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text-secondary); letter-spacing: 0.3em; text-transform: uppercase;
+  }
+
+  .landing-bottom {
+    padding: 18px 48px; border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--text-muted); letter-spacing: 0.25em; text-transform: uppercase;
+    position: relative; z-index: 3;
+    background: linear-gradient(to top, rgba(4,7,10,0.6), transparent);
+  }
+  .landing-bottom .corners { display: flex; gap: 16px; }
+
+  .app { 
+    display: grid; grid-template-columns: 320px 1fr 360px; 
+    grid-template-rows: 60px 1fr auto; height: 100vh; 
+    position: relative; z-index: 1;
+    opacity: 0; pointer-events: none; transition: opacity 0.6s 0.2s;
+  }
+  .app.visible { opacity: 1; pointer-events: all; }
+  
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse at 15% 0%, rgba(0, 212, 255, 0.04), transparent 50%),
+      radial-gradient(ellipse at 85% 100%, rgba(168, 85, 247, 0.03), transparent 50%);
+  }
+
+  header { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-logo { width: 28px; height: 28px; position: relative; }
+  .brand-logo::before, .brand-logo::after { content: ''; position: absolute; inset: 0; border: 1.5px solid var(--accent); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+  .brand-logo::before { box-shadow: 0 0 12px var(--accent-glow); }
+  .brand-logo::after { inset: 6px; opacity: 0.5; }
+  .brand-text h1 { font-family: 'Syncopate', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+  .brand-text p  { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-secondary); letter-spacing: 0.2em; text-transform: uppercase; }
+  .status { display: flex; align-items: center; gap: 20px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); }
+  .status-item { display: flex; align-items: center; gap: 8px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); animation: pulse 2s infinite; }
+  .seq-name { color: var(--text-primary); font-weight: 500; }
+  
+  .btn-back {
+    padding: 6px 12px; background: transparent; border: 1px solid var(--border);
+    color: var(--text-secondary); cursor: pointer; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-radius: 3px;
+    transition: 0.2s;
+  }
+  .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+  .left-panel { background: var(--bg-panel); border-right: 1px solid var(--border); overflow-y: auto; padding: 20px 16px; }
+  .section { margin-bottom: 24px; }
+  .section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .brique-card { background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+  .brique-card:hover { border-color: var(--border); background: var(--bg-elevated); }
+  .brique-card.active { border-color: var(--brique-color); background: color-mix(in srgb, var(--brique-color) 8%, var(--bg-panel-2)); }
+  .brique-card.active::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brique-color); box-shadow: 0 0 10px var(--brique-color); }
+  .brique-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .brique-name { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; display: flex; align-items: center; gap: 8px; }
+  .brique-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; padding: 2px 6px; background: var(--bg-deep); border-radius: 3px; color: var(--brique-color); border: 1px solid var(--brique-color); }
+  .brique-desc { font-size: 10px; color: var(--text-secondary); line-height: 1.4; }
+  .brique-rmse { margin-top: 8px; display: flex; align-items: baseline; justify-content: space-between; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+  .rmse-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; }
+  .rmse-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--brique-color); }
+  .toggle { width: 32px; height: 18px; background: var(--bg-deep); border-radius: 10px; position: relative; transition: 0.2s; border: 1px solid var(--border); }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: var(--text-muted); border-radius: 50%; transition: 0.2s; }
+  .brique-card.active .toggle { background: var(--brique-color); border-color: var(--brique-color); }
+  .brique-card.active .toggle::after { transform: translateX(14px); background: #fff; }
+
+  .legend-item { display: flex; align-items: center; gap: 10px; font-size: 10px; color: var(--text-secondary); margin-bottom: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-line { width: 18px; height: 2px; flex-shrink: 0; }
+
+  .canvas-area { background: var(--bg-deep); position: relative; overflow: hidden; display: grid; grid-template-rows: 1fr 1fr; gap: 1px; background-color: var(--border); }
+  .canvas-wrapper { position: relative; background: var(--bg-deep); overflow: hidden; }
+  .canvas-label { position: absolute; top: 12px; left: 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-primary); z-index: 10; background: var(--bg-panel); padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+  .canvas-mode { position: absolute; top: 12px; right: 16px; font-size: 10px; letter-spacing: 0.1em; color: var(--text-secondary); z-index: 10; background: var(--bg-panel); padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .right-panel { background: var(--bg-panel); border-left: 1px solid var(--border); overflow-y: auto; padding: 20px 16px; }
+  .telemetry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+  .telem-card { background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .telem-card.full { grid-column: 1 / -1; }
+  .telem-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 6px; }
+  .telem-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 600; color: var(--text-primary); }
+  .telem-unit { font-size: 10px; color: var(--text-secondary); margin-left: 4px; font-weight: 400; }
+
+  .rmse-bar { background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+  .rmse-bar-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .rmse-bar-name { font-size: 10px; font-weight: 500; color: var(--text-primary); }
+  .rmse-bar-val  { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--brique-color); }
+  .rmse-bar-track { height: 4px; background: var(--bg-deep); border-radius: 2px; overflow: hidden; position: relative; }
+  .rmse-bar-fill { height: 100%; background: var(--brique-color); box-shadow: 0 0 6px var(--brique-color); transition: width 0.3s; border-radius: 2px; }
+  .rmse-bar.muted { opacity: 0.35; }
+
+  footer { grid-column: 1 / -1; background: var(--bg-panel); border-top: 1px solid var(--border); padding: 14px 24px; display: grid; grid-template-columns: auto 1fr auto; gap: 24px; align-items: center; }
+  .transport { display: flex; align-items: center; gap: 6px; }
+  .tbtn { width: 36px; height: 36px; background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+  .tbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .tbtn.primary { background: var(--accent); color: var(--bg-deep); border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); }
+  .tbtn.primary:hover { background: #33defc; }
+  .tbtn svg { width: 14px; height: 14px; }
+
+  .timeline { display: flex; align-items: center; gap: 14px; }
+  .time-display { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); min-width: 90px; }
+  .time-display b { color: var(--text-primary); font-weight: 500; }
+  .slider-wrap { flex: 1; position: relative; height: 6px; background: var(--bg-panel-2); border-radius: 3px; cursor: pointer; border: 1px solid var(--border); }
+  .slider-zone { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--gt-color) 18%, transparent); border-left: 1px solid var(--gt-color); border-right: 1px solid var(--gt-color); }
+  .slider-progress { position: absolute; top: 0; left: 0; bottom: 0; background: var(--accent); border-radius: 3px; box-shadow: 0 0 8px var(--accent-glow); }
+  .slider-thumb { position: absolute; top: 50%; width: 14px; height: 14px; background: #fff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--accent), 0 0 12px var(--accent-glow); cursor: grab; }
+  .slider-thumb:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.15); }
+
+  .speed { display: flex; align-items: center; gap: 8px; }
+  .speed-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; }
+  .speed-btns { display: flex; background: var(--bg-panel-2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .speed-btn { padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; background: transparent; border: none; color: var(--text-secondary); cursor: pointer; transition: 0.15s; }
+  .speed-btn:hover { color: var(--text-primary); }
+  .speed-btn.active { background: var(--accent); color: var(--bg-deep); font-weight: 600; }
+  .speed-btn + .speed-btn { border-left: 1px solid var(--border); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  .export-menu { position: relative; }
+  .export-panel { position: absolute; bottom: 100%; right: 0; margin-bottom: 8px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 6px; display: none; min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .export-panel.open { display: block; }
+  .export-item { display: block; width: 100%; padding: 8px 12px; background: transparent; border: none; color: var(--text-primary); font-size: 11px; text-align: left; cursor: pointer; border-radius: 3px; font-family: inherit; }
+  .export-item:hover { background: var(--bg-panel-2); color: var(--accent); }
+
+  .error-banner {
+    position: fixed; top: 20px; right: 20px; z-index: 300;
+    background: rgba(239, 68, 68, 0.15); border: 1px solid var(--gt-color);
+    padding: 14px 18px; border-radius: 4px; max-width: 400px;
+    font-size: 12px; color: var(--text-primary);
+    transform: translateX(120%); transition: transform 0.3s;
+  }
+  .error-banner.show { transform: translateX(0); }
+  .error-banner .close { 
+    position: absolute; top: 4px; right: 8px; cursor: pointer; 
+    color: var(--text-secondary); background: none; border: none; font-size: 16px;
+  }
+
+  .drawer-header { display: none; }
+  .mobile-toolbar { display: none; }
+  .drawer-backdrop { display: none; }
+
+  @media (max-width: 1100px) and (min-width: 769px) {
+    .app { grid-template-columns: 280px 1fr; }
+    .right-panel { display: none; }
+  }
+
+  @media (max-width: 768px) {
+    html, body { overflow: hidden; }
+
+    .landing { overflow-y: auto; }
+    .landing-top { padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 10px; }
+    .status-stripe { gap: 14px; font-size: 8px; flex-wrap: wrap; }
+    .logo-group { gap: 10px; }
+    .hex-logo { width: 28px; height: 28px; }
+    .logo-text h1 { font-size: 10px; letter-spacing: 0.2em; }
+    .logo-text p { font-size: 8px; }
+
+    .landing-main {
+      grid-template-columns: 1fr;
+      padding: 24px 16px; gap: 28px;
+      align-items: start;
+    }
+    .landing-title { font-size: 38px !important; line-height: 1.05; }
+    .landing-title .t3 { font-size: 0.45em; margin-top: 8px; }
+    .landing-subtitle { font-size: 13px; max-width: 100%; }
+    .tag-line { font-size: 9px; padding: 6px 12px; }
+    .author-block { gap: 16px; padding-top: 14px; flex-wrap: wrap; }
+    .author-name { font-size: 13px; }
+    .author-role { font-size: 10px; }
+    .author-label { font-size: 8px; }
+    .author-separator { display: none; }
+
+    .select-panel { padding: 22px 18px; }
+    .select-panel h3 { font-size: 10px; margin-bottom: 18px; }
+    .chip-big { padding: 14px 10px; font-size: 12px; }
+    .chip-badge { font-size: 8px; }
+    .step-title { font-size: 10px; }
+    .step-num { width: 20px; height: 20px; font-size: 9px; }
+    .launch-btn { padding: 14px; font-size: 11px; letter-spacing: 0.18em; }
+
+    .landing-bottom {
+      padding: 12px 16px; flex-direction: column; gap: 6px;
+      font-size: 7px; align-items: flex-start;
+    }
+    .landing-bottom .corners { gap: 10px; flex-wrap: wrap; }
+
+    .app {
+      display: flex !important;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    header {
+      flex-shrink: 0;
+      height: auto;
+      padding: 10px 12px;
+      gap: 10px;
+    }
+    .brand { gap: 10px; flex: 1; min-width: 0; }
+    .brand-logo { width: 22px; height: 22px; }
+    .brand-text h1 { font-size: 9px; letter-spacing: 0.15em; }
+    .brand-text p { font-size: 7px; }
+    .status { gap: 8px; font-size: 8px; }
+    .status-item { display: none; }
+    .btn-back {
+      padding: 5px 10px; font-size: 8px; letter-spacing: 0.1em;
+      display: inline-flex;
+    }
+
+    .mobile-toolbar {
+      display: flex;
+      flex-shrink: 0;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+    }
+    .mobile-tbtn {
+      flex: 1;
+      padding: 10px 8px;
+      background: var(--bg-panel-2);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .mobile-tbtn svg { width: 12px; height: 12px; }
+
+    .canvas-area {
+      flex: 1;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      min-height: 0;
+    }
+    .canvas-wrapper { min-height: 150px; }
+    .canvas-label {
+      top: 8px; left: 10px;
+      font-size: 9px; padding: 4px 8px;
+    }
+    .canvas-mode {
+      top: 8px; right: 10px;
+      font-size: 8px; padding: 4px 8px;
+    }
+
+    .left-panel, .right-panel {
+      display: block;
+      position: fixed;
+      top: 0;
+      height: 100vh;
+      height: 100dvh;
+      width: 85%;
+      max-width: 340px;
+      z-index: 150;
+      padding: 20px 16px 80px 16px;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+      border: none;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+    }
+    .left-panel {
+      left: 0;
+      border-right: 1px solid var(--border);
+      transform: translateX(-105%);
+    }
+    .right-panel {
+      right: 0;
+      border-left: 1px solid var(--border);
+      transform: translateX(105%);
+    }
+    .left-panel.open { transform: translateX(0); }
+    .right-panel.open { transform: translateX(0); }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .drawer-title {
+      font-family: 'Syncopate', sans-serif;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--text-primary);
+    }
+    .drawer-close {
+      width: 30px; height: 30px;
+      background: var(--bg-panel-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .drawer-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 140;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .drawer-backdrop.show { opacity: 1; pointer-events: all; }
+
+    footer {
+      flex-shrink: 0;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .transport { justify-content: center; gap: 8px; }
+    .tbtn { width: 38px; height: 38px; }
+    .tbtn.primary { width: 48px; height: 48px; }
+
+    .timeline {
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .time-display {
+      font-size: 9px;
+      min-width: auto;
+      flex-basis: 100%;
+      text-align: center;
+    }
+    .slider-wrap { flex-basis: 100%; height: 10px; }
+    .slider-thumb { width: 18px; height: 18px; }
+
+    .speed {
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .speed-label { display: none; }
+    .speed-btns { flex: 1; max-width: 260px; }
+    .speed-btn {
+      padding: 8px 10px;
+      font-size: 10px;
+      flex: 1;
+    }
+
+    .brique-card { padding: 10px; margin-bottom: 8px; }
+    .brique-name { font-size: 11px; }
+    .brique-desc { font-size: 9px; }
+    .rmse-value { font-size: 13px; }
+    .section-title { font-size: 9px; }
+    .telem-value { font-size: 16px; }
+
+    .export-panel {
+      position: fixed !important;
+      bottom: auto;
+      top: 50%;
+      left: 50% !important;
+      right: auto !important;
+      transform: translate(-50%, -50%);
+      margin: 0 !important;
+      min-width: 240px;
+      padding: 10px;
+      z-index: 300;
+    }
+    .export-item { padding: 12px 14px; font-size: 12px; }
+
+    .drop-box { padding: 40px 24px; }
+    .drop-title { font-size: 16px; }
+    .drop-sub { font-size: 11px; }
+  }
+
+  @media (max-width: 380px) {
+    .landing-title { font-size: 30px !important; }
+    .chip-big { padding: 12px 8px; font-size: 11px; }
+    .mobile-tbtn { font-size: 8px; padding: 9px 6px; }
+    .mobile-tbtn svg { width: 10px; height: 10px; }
+    .speed-btn { padding: 6px 6px; font-size: 9px; }
+    .tbtn { width: 34px; height: 34px; }
+    .tbtn.primary { width: 44px; height: 44px; }
+  }
+
+  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+    .canvas-area {
+      grid-template-rows: none;
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="landing" id="landing">
+  
+  <div class="landing-top">
+    <div class="logo-group">
+      <div class="hex-logo"></div>
+      <div class="logo-text">
+        <h1>Cooperative Localization</h1>
+        <p>PIPELINE · V2X · URBANING-V2X</p>
+      </div>
+    </div>
+    <div class="status-stripe">
+      <div><span class="dot"></span>System Ready</div>
+      <div id="landing-status">— sequences loaded</div>
+      <div id="landing-time"></div>
+    </div>
+  </div>
+
+  <div class="landing-main">
+    
+    <div class="landing-left">
+      <div class="tag-line">PhD Research · Autonomous Vehicles</div>
+      
+      <h1 class="landing-title">
+        <span class="t1">COOPERATIVE</span>
+        <span class="t2">Localization</span>
+        <span class="t1">PIPELINE </span>
+        <span class="t3">EKF · V2I-Pose Cooperative Fusion</span>
+      </h1>
+
+      <p class="landing-subtitle">
+        Real-time cooperative localization system for autonomous vehicles.
+        Fusion of <strong>Onboard GNSS/IMU</strong> and <strong>V2I-Pose observations</strong>
+        evaluated on the <strong>UrbanIng-V2X</strong> dataset.
+      </p>
+
+      <div class="author-block">
+        <div class="author-info">
+          <span class="author-label">Researcher</span>
+          <span class="author-name">Ahmed Rafik Islem BELHADEF</span>
+          <span class="author-role">PhD Student</span>
+        </div>
+        <div class="author-separator"></div>
+        <div class="author-info">
+          <span class="author-label">Institution</span>
+          <span class="author-name">ESTACA · Paris-Saclay</span>
+          <span class="author-role">VEDECOM Institute</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="landing-right">
+      <div class="select-panel">
+        <h3>RUN CONFIGURATION</h3>
+
+        <div class="step active" id="step-1">
+          <div class="step-label">
+            <div class="step-num">1</div>
+            <div class="step-title">GNSS NOISE CONFIGURATION</div>
+          </div>
+          <div class="chip-group" id="noise-chips">
+          </div>
+        </div>
+
+        <div class="step" id="step-2">
+          <div class="step-label">
+            <div class="step-num">2</div>
+            <div class="step-title">Intersection</div>
+          </div>
+          <div class="chip-group" id="inter-chips">
+            <div class="chip chip-big disabled" data-inter="1">
+              01<span class="chip-badge">Intersection 1</span>
+            </div>
+            <div class="chip chip-big disabled" data-inter="2">
+              02<span class="chip-badge">Intersection 2</span>
+            </div>
+            <div class="chip chip-big disabled" data-inter="3">
+              03<span class="chip-badge">Intersection 3</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="step-3">
+          <div class="step-label">
+            <div class="step-num">3</div>
+            <div class="step-title">SEQUENCE</div>
+          </div>
+          <select class="seq-select" id="seq-select" disabled>
+            <option value="">— Select a sequence —</option>
+          </select>
+        </div>
+
+        <button class="launch-btn" id="launch-btn" disabled>
+          Launch Pipeline →
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="landing-bottom">
+    <div class="corners">
+      <span>◢ V2X INFRASTRUCTURE</span>
+      <span>◢ EKF COOPERATIVE FUSION</span>
+    </div>
+    <div>© 2026 · ESTACA × VEDECOM · UrbanIng-V2X</div>
+  </div>
+
+</div>
+
+<div class="loading-overlay" id="loading">
+  <div class="loader-hex"><div></div><div></div><div></div></div>
+  <div class="loading-text" id="loading-text">Loading data...</div>
+</div>
+
+<div class="error-banner" id="error-banner">
+  <button class="close" onclick="document.getElementById('error-banner').classList.remove('show')">×</button>
+  <span id="error-text"></span>
+</div>
+
+<div class="app" id="app">
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+  <header>
+    <div class="brand">
+      <div class="brand-logo"></div>
+      <div class="brand-text">
+        <h1>Cooperative Localization</h1>
+        <p>ESTACA · VEDECOM</p>
+      </div>
+    </div>
+    <div class="status">
+      <div class="status-item"><div class="status-dot"></div><span>SYSTEM ACTIVE</span></div>
+      <div class="status-item">SEQ · <span class="seq-name" id="seqname">—</span></div>
+      <div class="status-item">NOISE · <span class="seq-name" id="noisename">—</span></div>
+      <button class="btn-back" id="btn-back">◂ Back to Menu</button>
+    </div>
+  </header>
+
+  <div class="mobile-toolbar">
+    <button class="mobile-tbtn" id="m-btn-briques">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Methods
+    </button>
+    <button class="mobile-tbtn" id="m-btn-telem">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      RMSE
+    </button>
+  </div>
+
+  <aside class="left-panel" id="left-panel">
+    <div class="drawer-header">
+      <span class="drawer-title">Methods</span>
+      <button class="drawer-close" data-close="left">×</button>
+    </div>
+    <div class="section">
+      <div class="section-title">LOCALIZATION METHODS</div>
+      <div class="brique-card active" data-brique="gps" style="--brique-color: var(--gps-color);">
+        <div class="brique-header"><div class="brique-name">EKF GNSS-only <span class="brique-tag">A</span></div><div class="toggle"></div></div>
+        <div class="brique-desc">EKF GNSS + IMU baseline, no cooperation</div>
+        <div class="brique-rmse"><span class="rmse-label">RMSE V1 / V2</span><span class="rmse-value" id="rmse-gps">— / —</span></div>
+      </div>
+      <div class="brique-card active" data-brique="infra" style="--brique-color: var(--infra-color);">
+        <div class="brique-header"><div class="brique-name">EKF GNSS+V2I-Pose <span class="brique-tag">B</span></div><div class="toggle"></div></div>
+        <div class="brique-desc">EKF + V2I-Pose observation (cooperative)</div>
+        <div class="brique-rmse"><span class="rmse-label">RMSE V1 / V2</span><span class="rmse-value" id="rmse-infra">— / —</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">LEGEND</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--gt-color);"></span>Ground Truth</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#666;"></span>Noisy GNSS</div>
+      <div class="legend-item"><span class="legend-dot" style="background:var(--infra-color);border-radius:0;transform:rotate(45deg);width:8px;height:8px;"></span>Infrastructure LiDAR</div>
+      <div class="legend-item"><span class="legend-line" style="background:var(--infra-color);border:1px dashed var(--infra-color);height:0;"></span>LiDAR Range</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">VIEW</div>
+      <div class="brique-card" id="toggle-map" style="--brique-color: var(--accent); cursor:pointer;">
+        <div class="brique-header"><div class="brique-name">OSM Map</div><div class="toggle"></div></div>
+        <div class="brique-desc">Road polygons and curbs</div>
+      </div>
+      <div class="brique-card active" id="toggle-gps-noise" style="--brique-color: var(--text-secondary); cursor:pointer;">
+        <div class="brique-header"><div class="brique-name">Noisy GNSS</div><div class="toggle"></div></div>
+        <div class="brique-desc">Simulated GNSS point cloud</div>
+      </div>
+      <div class="brique-card active" id="toggle-range" style="--brique-color: var(--text-secondary); cursor:pointer;">
+        <div class="brique-header"><div class="brique-name">LiDAR Ranges</div><div class="toggle"></div></div>
+        <div class="brique-desc">Infrastructure range circles</div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="canvas-area">
+    <div class="canvas-wrapper">
+      <div class="canvas-label">Vehicle 1</div>
+      <div class="canvas-mode" id="mode-v1">—</div>
+      <canvas id="canvas-v1"></canvas>
+    </div>
+    <div class="canvas-wrapper">
+      <div class="canvas-label">Vehicle 2</div>
+      <div class="canvas-mode" id="mode-v2">—</div>
+      <canvas id="canvas-v2"></canvas>
+    </div>
+  </section>
+
+  <aside class="right-panel" id="right-panel">
+    <div class="drawer-header">
+      <span class="drawer-title">TELEMETRY · RMSE</span>
+      <button class="drawer-close" data-close="right">×</button>
+    </div>
+    <div class="section">
+      <div class="section-title">REAL-TIME TELEMETRY</div>
+      <div class="telemetry">
+        <div class="telem-card"><div class="telem-label">VELOCITY V1</div><div class="telem-value" id="speed-v1">0.00<span class="telem-unit">m/s</span></div></div>
+        <div class="telem-card"><div class="telem-label">VELOCITY V2</div><div class="telem-value" id="speed-v2">0.00<span class="telem-unit">m/s</span></div></div>
+        <div class="telem-card full"><div class="telem-label">FRAME · TIME</div><div class="telem-value"><span id="frame-display">0 / 0</span><span class="telem-unit" id="time-display">· 0.00 s</span></div></div>
+      </div>
+    </div>
+    <div class="section"><div class="section-title">CUMULATIVE RMSE · VEHICLE 1</div><div id="rmse-live-v1"></div></div>
+    <div class="section"><div class="section-title">CUMULATIVE RMSE · VEHICLE 2</div><div id="rmse-live-v2"></div></div>
+  </aside>
+
+  <footer>
+    <div class="transport">
+      <button class="tbtn" id="btn-restart" title="Restart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="19,20 9,12 19,4"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+      <button class="tbtn primary" id="btn-play" title="Play/Pause">
+        <svg id="icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>
+        <svg id="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      <button class="tbtn" id="btn-step" title="Step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13,17 18,12 13,7"/><polyline points="6,17 11,12 6,7"/></svg></button>
+    </div>
+    <div class="timeline">
+      <div class="time-display"><b id="t-cur">0.00</b>s / <span id="t-tot">0.00</span>s</div>
+      <div class="slider-wrap" id="slider">
+        <div class="slider-zone" id="slider-zone"></div>
+        <div class="slider-progress" id="slider-progress"></div>
+        <div class="slider-thumb" id="slider-thumb"></div>
+      </div>
+    </div>
+    <div class="speed">
+      <span class="speed-label">Speed</span>
+      <div class="speed-btns">
+        <button class="speed-btn" data-speed="0.25">0.25×</button>
+        <button class="speed-btn" data-speed="0.5">0.5×</button>
+        <button class="speed-btn active" data-speed="1">1×</button>
+        <button class="speed-btn" data-speed="2">2×</button>
+        <button class="speed-btn" data-speed="4">4×</button>
+      </div>
+      <div class="export-menu">
+        <button class="tbtn" id="btn-export" title="Export"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <div class="export-panel" id="export-panel">
+          <button class="export-item" data-export="screenshot-v1">Screenshot V1 (PNG)</button>
+          <button class="export-item" data-export="screenshot-v2">Screenshot V2 (PNG)</button>
+          <button class="export-item" data-export="screenshot-both">Combined screenshot</button>
+          <button class="export-item" data-export="video-v1">Record V1 video (WebM)</button>
+          <button class="export-item" data-export="video-v2">Record V2 video (WebM)</button>
+        </div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script>
+const BRIQUE_CONFIG = {
+  gps:    { color: '#4a9eff', name: 'EKF GNSS-only',     trajXKey: 'traj_gps_x',   trajYKey: 'traj_gps_y',   rmseKey: 'rmse_gps',   lineWidth: 1.8, dash: [] },
+  infra:  { color: '#22c55e', name: 'EKF GNSS+V2I-Pose', trajXKey: 'traj_infra_x', trajYKey: 'traj_infra_y', rmseKey: 'rmse_infra', lineWidth: 1.8, dash: [6,4] }
+};
+
+const state = {
+  manifest: null,
+  data: null,
+  selection: { noise: null, inter: null, seq: null },
+  frame: 0, playing: false, speed: 1,
+  baseIntervalMs: 30, lastTime: 0,
+  briques: { gps: true, infra: true },
+  showMap: false, showGpsNoise: true, showRange: true,
+  view: null,
+  recording: { active: false, target: null, recorder: null, chunks: [] }
+};
+
+function showError(msg) {
+  const banner = document.getElementById('error-banner');
+  document.getElementById('error-text').textContent = msg;
+  banner.classList.add('show');
+  setTimeout(() => banner.classList.remove('show'), 6000);
+}
+function setLoading(visible, text) {
+  const el = document.getElementById('loading');
+  if (text) document.getElementById('loading-text').textContent = text;
+  el.classList.toggle('show', visible);
+}
+
+function tick() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  const el = document.getElementById('landing-time');
+  if (el) el.textContent = `${hh}:${mm}:${ss} UTC`;
+}
+setInterval(tick, 1000); tick();
+
+async function loadManifest() {
+  try {
+    setLoading(true, 'Loading manifest...');
+    const r = await fetch('manifest.json');
+    if (!r.ok) throw new Error(`manifest.json not found (${r.status})`);
+    state.manifest = await r.json();
+    populateNoiseChips();
+    const nSeq = state.manifest.sequences.length;
+    document.getElementById('landing-status').textContent = `${nSeq} configurations loaded`;
+    setLoading(false);
+  } catch (e) {
+    setLoading(false);
+    showError('Failed to load manifest: ' + e.message + '. Make sure you serve via HTTP (python3 -m http.server 8000).');
+  }
+}
+
+function populateNoiseChips() {
+  const container = document.getElementById('noise-chips');
+  container.innerHTML = '';
+  state.manifest.noise_configs.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'chip chip-big';
+    div.dataset.noise = n.tag;
+    div.innerHTML = `σ ${n.tag.replace('_', '/')}<span class="chip-badge">${n.label}</span>`;
+    div.addEventListener('click', () => selectNoise(n.tag));
+    container.appendChild(div);
+  });
+}
+
+function selectNoise(tag) {
+  state.selection.noise = tag;
+  state.selection.inter = null;
+  state.selection.seq = null;
+  
+  document.querySelectorAll('#noise-chips .chip').forEach(c => {
+    c.classList.toggle('selected', c.dataset.noise === tag);
+  });
+  
+  document.getElementById('step-1').classList.remove('active'); 
+  document.getElementById('step-1').classList.add('done');
+  document.getElementById('step-2').classList.add('active');
+  
+  const available = new Set(
+    state.manifest.sequences.filter(s => s.noise_tag === tag).map(s => s.intersection)
+  );
+  document.querySelectorAll('#inter-chips .chip').forEach(c => {
+    const num = parseInt(c.dataset.inter);
+    if (available.has(num)) {
+      c.classList.remove('disabled');
+      c.onclick = () => selectIntersection(num);
+    } else {
+      c.classList.add('disabled');
+      c.onclick = null;
+    }
+    c.classList.remove('selected');
+  });
+  
+  document.getElementById('step-3').classList.remove('active', 'done');
+  document.getElementById('seq-select').disabled = true;
+  document.getElementById('seq-select').innerHTML = '<option value="">— Select a sequence —</option>';
+  document.getElementById('launch-btn').disabled = true;
+}
+
+function selectIntersection(num) {
+  state.selection.inter = num;
+  state.selection.seq = null;
+  
+  document.querySelectorAll('#inter-chips .chip').forEach(c => {
+    c.classList.toggle('selected', parseInt(c.dataset.inter) === num);
+  });
+  
+  document.getElementById('step-2').classList.remove('active');
+  document.getElementById('step-2').classList.add('done');
+  document.getElementById('step-3').classList.add('active');
+  
+  const seqs = state.manifest.sequences.filter(
+    s => s.noise_tag === state.selection.noise && s.intersection === num
+  );
+  const sel = document.getElementById('seq-select');
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">— Select a sequence —</option>';
+  seqs.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.file;
+    opt.textContent = s.sequence;
+    sel.appendChild(opt);
+  });
+  sel.onchange = e => selectSequence(e.target.value);
+  
+  document.getElementById('launch-btn').disabled = true;
+}
+
+function selectSequence(file) {
+  if (!file) {
+    state.selection.seq = null;
+    document.getElementById('launch-btn').disabled = true;
+    document.getElementById('step-3').classList.remove('done');
+    return;
+  }
+  state.selection.seq = file;
+  document.getElementById('step-3').classList.add('done');
+  document.getElementById('launch-btn').disabled = false;
+}
+
+document.getElementById('launch-btn').addEventListener('click', launchDashboard);
+
+async function launchDashboard() {
+  if (!state.selection.seq) return;
+  setLoading(true, 'Loading sequence data...');
+  try {
+    const r = await fetch(state.selection.seq);
+    if (!r.ok) throw new Error(`${state.selection.seq} not found`);
+    const data = await r.json();
+    setLoading(false);
+    initializeDashboard(data);
+  } catch (e) {
+    setLoading(false);
+    showError('Error: ' + e.message);
+  }
+}
+
+document.getElementById('btn-back').addEventListener('click', () => {
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('landing').classList.remove('hidden');
+  togglePlay(false);
+});
+
+function initializeDashboard(data) {
+  state.data = data;
+  state.frame = 0;
+
+  document.getElementById('landing').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+
+  document.getElementById('seqname').textContent = data.sequence;
+  document.getElementById('noisename').textContent = data.noise_label || data.noise_tag;
+
+  const allX = [...data.vehicle1.pos_x_gt, ...data.vehicle2.pos_x_gt,
+                data.lidars_infra.lidar_11.x, data.lidars_infra.lidar_31.x,
+                ...data.infrastructures.map(i => i.x)];
+  const allY = [...data.vehicle1.pos_y_gt, ...data.vehicle2.pos_y_gt,
+                data.lidars_infra.lidar_11.y, data.lidars_infra.lidar_31.y,
+                ...data.infrastructures.map(i => i.y)];
+  const cx = (Math.min(...allX) + Math.max(...allX)) / 2;
+  const cy = (Math.min(...allY) + Math.max(...allY)) / 2;
+  const margin = 0.15;
+  const dv = Math.max(
+    (Math.max(...allX) - Math.min(...allX)) * (1 + margin) / 2,
+    (Math.max(...allY) - Math.min(...allY)) * (1 + margin) / 2,
+    65
+  );
+  state.view = { cx, cy, dv };
+
+  ['gps','infra'].forEach(b => {
+    const key = BRIQUE_CONFIG[b].rmseKey;
+    const v1 = data.vehicle1[key];
+    const v2 = data.vehicle2[key];
+    const fmt = v => v === null || v === undefined ? '—' : v.toFixed(3);
+    document.getElementById(`rmse-${b}`).textContent = `${fmt(v1)} / ${fmt(v2)}`;
+  });
+
+  buildLiveRmse('v1');
+  buildLiveRmse('v2');
+  
+  setTimeout(() => {
+    setupCanvases();
+    const tmax = data.vehicle1.temps_s[data.vehicle1.temps_s.length - 1];
+    document.getElementById('t-tot').textContent = tmax.toFixed(2);
+    const zStart = data.vehicle1.t_deb / tmax * 100;
+    const zEnd   = data.vehicle1.t_fin / tmax * 100;
+    document.getElementById('slider-zone').style.left = zStart + '%';
+    document.getElementById('slider-zone').style.width = (zEnd - zStart) + '%';
+    render();
+    setTimeout(() => { setupCanvases(); render(); }, 200);
+  }, 150);
+}
+
+function buildLiveRmse(veh) {
+  const container = document.getElementById(`rmse-live-${veh}`);
+  container.innerHTML = '';
+  ['gps','infra'].forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'rmse-bar muted';
+    div.id = `rmsebar-${veh}-${b}`;
+    div.style.setProperty('--brique-color', BRIQUE_CONFIG[b].color);
+    div.innerHTML = `
+      <div class="rmse-bar-head">
+        <span class="rmse-bar-name">${BRIQUE_CONFIG[b].name}</span>
+        <span class="rmse-bar-val" id="rmsebar-${veh}-${b}-v">—</span>
+      </div>
+      <div class="rmse-bar-track"><div class="rmse-bar-fill" id="rmsebar-${veh}-${b}-f" style="width:0%"></div></div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function setupCanvases() {
+  ['canvas-v1','canvas-v2'].forEach(id => {
+    const c = document.getElementById(id);
+    const r = c.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    c.width  = r.width  * dpr;
+    c.height = r.height * dpr;
+    c.getContext('2d').scale(dpr, dpr);
+  });
+}
+window.addEventListener('resize', () => { if (state.data) { setupCanvases(); render(); } });
+
+function makeTransform(canvas) {
+  const r = canvas.getBoundingClientRect();
+  const { cx, cy, dv } = state.view;
+  const scale = Math.min(r.width, r.height) / (2 * dv);
+  const ox = r.width / 2;
+  const oy = r.height / 2;
+  return {
+    x2px: x => ox + (x - cx) * scale,
+    y2px: y => oy - (y - cy) * scale,
+    scale
+  };
+}
+
+function drawGrid(ctx, t, w, h) {
+  const { cx, cy, dv } = state.view;
+  const step = 20;
+  const xmin = Math.floor((cx - dv) / step) * step;
+  const xmax = Math.ceil((cx + dv) / step) * step;
+  const ymin = Math.floor((cy - dv) / step) * step;
+  const ymax = Math.ceil((cy + dv) / step) * step;
+
+  ctx.strokeStyle = '#0f1620';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = xmin; x <= xmax; x += step) { ctx.moveTo(t.x2px(x), 0); ctx.lineTo(t.x2px(x), h); }
+  for (let y = ymin; y <= ymax; y += step) { ctx.moveTo(0, t.y2px(y)); ctx.lineTo(w, t.y2px(y)); }
+  ctx.stroke();
+
+  ctx.strokeStyle = '#1f2833';
+  ctx.beginPath();
+  ctx.moveTo(t.x2px(0), 0); ctx.lineTo(t.x2px(0), h);
+  ctx.moveTo(0, t.y2px(0)); ctx.lineTo(w, t.y2px(0));
+  ctx.stroke();
+}
+
+function drawMap(ctx, t) {
+  if (!state.showMap || !state.data.carte_osm) return;
+  const osm = state.data.carte_osm;
+  ctx.fillStyle = 'rgba(60, 70, 85, 0.25)';
+  ctx.strokeStyle = 'rgba(100, 110, 125, 0.2)';
+  osm.road_polys.forEach(poly => {
+    ctx.beginPath();
+    poly.forEach((p, i) => { const X = t.x2px(p[0]), Y = t.y2px(p[1]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.closePath();
+    ctx.fill();
+  });
+  ctx.strokeStyle = 'rgba(120, 130, 150, 0.35)';
+  ctx.lineWidth = 1;
+  osm.curbs.forEach(curb => {
+    ctx.beginPath();
+    curb.forEach((p, i) => { const X = t.x2px(p[0]), Y = t.y2px(p[1]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    ctx.stroke();
+  });
+}
+
+function drawInfrastructure(ctx, t) {
+  const d = state.data;
+  if (state.showRange) {
+    ['lidar_11','lidar_31'].forEach(k => {
+      const l = d.lidars_infra[k];
+      const r = l.portee * t.scale;
+      ctx.beginPath();
+      ctx.arc(t.x2px(l.x), t.y2px(l.y), r, 0, 2*Math.PI);
+      ctx.strokeStyle = k === 'lidar_11' ? 'rgba(34, 197, 94, 0.25)' : 'rgba(74, 158, 255, 0.25)';
+      ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = k === 'lidar_11' ? 'rgba(34, 197, 94, 0.04)' : 'rgba(74, 158, 255, 0.04)';
+      ctx.fill();
+    });
+  }
+  d.infrastructures.forEach(c => {
+    const X = t.x2px(c.x), Y = t.y2px(c.y);
+    ctx.save();
+    if (c.type === 'lidar') {
+      ctx.fillStyle = '#22c55e';
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(X, Y, 4, 0, 2*Math.PI);
+      ctx.fill(); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#e8eef5';
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1;
+      ctx.translate(X, Y);
+      ctx.beginPath();
+      ctx.moveTo(0, -5); ctx.lineTo(5, 4); ctx.lineTo(-5, 4); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+function drawVehicleData(ctx, t, veh) {
+  const d = state.data[veh];
+  const k = Math.min(state.frame, d.temps_s.length - 1);
+  const iDeb = d.i_deb, iFin = d.i_fin;
+
+  if (state.showGpsNoise) {
+    for (let i = 0; i <= k; i++) {
+      ctx.fillStyle = d.masque_infra[i] ? 'rgba(74, 158, 255, 0.25)' : 'rgba(245, 158, 11, 0.2)';
+      ctx.beginPath();
+      ctx.arc(t.x2px(d.gps_x[i]), t.y2px(d.gps_y[i]), 1.2, 0, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const drawPath = (xs, ys, iStart, iEnd, color, w) => {
+    if (iEnd <= iStart) return;
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = w;
+    let started = false;
+    for (let i = iStart; i <= iEnd; i++) {
+      if (xs[i] == null || ys[i] == null) { started = false; continue; }
+      const X = t.x2px(xs[i]), Y = t.y2px(ys[i]);
+      if (!started) { ctx.moveTo(X, Y); started = true; } else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+  };
+
+  drawPath(d.pos_x_gt, d.pos_y_gt, 0, Math.min(k, iDeb), '#4d5968', 1.8);
+  drawPath(d.pos_x_gt, d.pos_y_gt, iDeb, Math.min(k, iFin), '#ef4444', 2.2);
+  if (k > iFin) drawPath(d.pos_x_gt, d.pos_y_gt, iFin, k, '#4d5968', 1.8);
+
+  for (const b of ['gps','infra']) {
+    if (!state.briques[b]) continue;
+    const cfg = BRIQUE_CONFIG[b];
+    const xs = d[cfg.trajXKey], ys = d[cfg.trajYKey];
+    if (!xs) continue;
+
+    let iStart = 0, iEnd = k;
+    if (b === 'infra')  { iStart = iDeb; iEnd = Math.min(k, iFin); }
+
+    ctx.beginPath();
+    ctx.strokeStyle = cfg.color;
+    ctx.lineWidth = cfg.lineWidth;
+    ctx.setLineDash(cfg.dash);
+    ctx.shadowColor = cfg.color;
+    ctx.shadowBlur = 5;
+    let started = false;
+    for (let i = iStart; i <= iEnd; i++) {
+      if (xs[i] == null || ys[i] == null) { started = false; continue; }
+      const X = t.x2px(xs[i]), Y = t.y2px(ys[i]);
+      if (!started) { ctx.moveTo(X, Y); started = true; } else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
+
+    let markerI = -1;
+    for (let i = iEnd; i >= iStart; i--) { if (xs[i] != null) { markerI = i; break; } }
+    if (markerI >= 0) drawVehicleMarker(ctx, t.x2px(xs[markerI]), t.y2px(ys[markerI]), cfg.color);
+  }
+
+  const X = t.x2px(d.pos_x_gt[k]), Y = t.y2px(d.pos_y_gt[k]);
+  drawVehicleBody(ctx, X, Y, d.cap_gt[k]);
+}
+
+function drawVehicleMarker(ctx, X, Y, color) {
+  ctx.save();
+  ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.arc(X, Y, 4.5, 0, 2*Math.PI); ctx.fill();
+  ctx.shadowBlur = 0; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.restore();
+}
+
+function drawVehicleBody(ctx, X, Y, heading) {
+  ctx.save();
+  ctx.translate(X, Y); ctx.rotate(-heading);
+  ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.moveTo(9, 0); ctx.lineTo(-6, 5); ctx.lineTo(-6, -5); ctx.closePath();
+  ctx.fill(); ctx.shadowBlur = 0; ctx.stroke();
+  ctx.restore();
+}
+
+function render() {
+  if (!state.data) return;
+  renderVehicle('vehicle1', 'canvas-v1', 'mode-v1');
+  renderVehicle('vehicle2', 'canvas-v2', 'mode-v2');
+  updateTelemetry();
+  updateRmseLive();
+}
+
+function renderVehicle(veh, canvasId, modeId) {
+  const c = document.getElementById(canvasId);
+  const ctx = c.getContext('2d');
+  const r = c.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  ctx.fillStyle = '#04070a'; ctx.fillRect(0, 0, r.width, r.height);
+
+  const t = makeTransform(c);
+  drawGrid(ctx, t, r.width, r.height);
+  drawMap(ctx, t);
+  drawInfrastructure(ctx, t);
+  drawVehicleData(ctx, t, veh);
+
+  const d = state.data[veh];
+  const k = Math.min(state.frame, d.temps_s.length - 1);
+  const cap = d.capteurs_infra ? d.capteurs_infra[k] : d.capteurs_ndt[k];
+  let modeTxt = '— OUTSIDE ZONE —';
+  if (cap === 'gps_infra') modeTxt = '● V2I-POSE ACTIVE';
+  else if (cap === 'gps_zone') modeTxt = '◐ INFRASTRUCTURE ZONE · GNSS only';
+  else if (cap === 'gps_hors') modeTxt = 'OUTSIDE ZONE';
+  document.getElementById(modeId).textContent = modeTxt;
+}
+
+function updateTelemetry() {
+  const d = state.data;
+  const k1 = Math.min(state.frame, d.vehicle1.temps_s.length - 1);
+  const k2 = Math.min(state.frame, d.vehicle2.temps_s.length - 1);
+  document.getElementById('speed-v1').innerHTML = d.vehicle1.vv_gt[k1].toFixed(2) + '<span class="telem-unit">m/s</span>';
+  document.getElementById('speed-v2').innerHTML = d.vehicle2.vv_gt[k2].toFixed(2) + '<span class="telem-unit">m/s</span>';
+  const tmax = d.vehicle1.temps_s.length;
+  document.getElementById('frame-display').textContent = `${state.frame} / ${tmax - 1}`;
+  document.getElementById('time-display').textContent = `· ${d.vehicle1.temps_s[k1].toFixed(2)} s`;
+  document.getElementById('t-cur').textContent = d.vehicle1.temps_s[k1].toFixed(2);
+  const pct = state.frame / (tmax - 1) * 100;
+  document.getElementById('slider-progress').style.width = pct + '%';
+  document.getElementById('slider-thumb').style.left = pct + '%';
+}
+
+function rmseCumulatif(veh, briqueKey, frameMax) {
+  const d = state.data[veh];
+  const cfg = BRIQUE_CONFIG[briqueKey];
+  const xs = d[cfg.trajXKey], ys = d[cfg.trajYKey];
+  if (!xs) return null;
+  // Compute RMSE over the infrastructure zone frames (same evaluation window as full pipeline)
+  const iStart = d.i_deb;
+  const iEnd = Math.min(frameMax, d.i_fin);
+  if (iEnd < iStart + 2) return null;
+  let sum = 0, count = 0;
+  for (let i = iStart; i <= iEnd; i++) {
+    if (xs[i] == null || ys[i] == null) continue;
+    const dx = xs[i] - d.pos_x_gt[i];
+    const dy = ys[i] - d.pos_y_gt[i];
+    sum += dx*dx + dy*dy; count++;
+  }
+  return count >= 2 ? Math.sqrt(sum / count) : null;
+}
+
+function updateRmseLive() {
+  ['v1','v2'].forEach(v => {
+    const veh = v === 'v1' ? 'vehicle1' : 'vehicle2';
+    const vals = {};
+    ['gps','infra'].forEach(b => {
+      vals[b] = rmseCumulatif(veh, b, state.frame);
+    });
+    const maxVal = Math.max(...Object.values(vals).filter(x => x !== null && !isNaN(x)), 1);
+    ['gps','infra'].forEach(b => {
+      const val = vals[b];
+      const el = document.getElementById(`rmsebar-${v}-${b}`);
+      const txt = document.getElementById(`rmsebar-${v}-${b}-v`);
+      const fill = document.getElementById(`rmsebar-${v}-${b}-f`);
+      if (state.briques[b] && val !== null) {
+        el.classList.remove('muted');
+        txt.textContent = val.toFixed(3) + ' m';
+        fill.style.width = (val / maxVal * 100) + '%';
+      } else {
+        el.classList.add('muted');
+        txt.textContent = '—';
+        fill.style.width = '0%';
+      }
+    });
+  });
+}
+
+function animate(now) {
+  if (state.playing && state.data) {
+    const dt = now - state.lastTime;
+    if (dt >= state.baseIntervalMs / state.speed) {
+      state.frame += 1;
+      const tot = state.data.vehicle1.temps_s.length - 1;
+      if (state.frame >= tot) { state.frame = tot; togglePlay(false); }
+      render();
+      state.lastTime = now;
+    }
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
+
+document.querySelectorAll('.brique-card[data-brique]').forEach(card => {
+  card.addEventListener('click', () => {
+    const b = card.dataset.brique;
+    state.briques[b] = !state.briques[b];
+    card.classList.toggle('active', state.briques[b]);
+    render();
+  });
+});
+document.getElementById('toggle-map').addEventListener('click', e => {
+  state.showMap = !state.showMap;
+  e.currentTarget.classList.toggle('active', state.showMap);
+  render();
+});
+document.getElementById('toggle-gps-noise').addEventListener('click', e => {
+  state.showGpsNoise = !state.showGpsNoise;
+  e.currentTarget.classList.toggle('active', state.showGpsNoise);
+  render();
+});
+document.getElementById('toggle-range').addEventListener('click', e => {
+  state.showRange = !state.showRange;
+  e.currentTarget.classList.toggle('active', state.showRange);
+  render();
+});
+
+function togglePlay(force) {
+  state.playing = force === undefined ? !state.playing : force;
+  document.getElementById('icon-play').style.display = state.playing ? 'none' : 'block';
+  document.getElementById('icon-pause').style.display = state.playing ? 'block' : 'none';
+  state.lastTime = performance.now();
+}
+document.getElementById('btn-play').addEventListener('click', () => togglePlay());
+document.getElementById('btn-restart').addEventListener('click', () => { state.frame = 0; render(); });
+document.getElementById('btn-step').addEventListener('click', () => {
+  if (!state.data) return;
+  const tot = state.data.vehicle1.temps_s.length - 1;
+  state.frame = Math.min(state.frame + 1, tot);
+  render();
+});
+document.querySelectorAll('.speed-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.speed = parseFloat(b.dataset.speed);
+  });
+});
+
+const slider = document.getElementById('slider');
+let dragging = false;
+const sliderSeek = (clientX) => {
+  if (!state.data) return;
+  const r = slider.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+  const tot = state.data.vehicle1.temps_s.length - 1;
+  state.frame = Math.round(x * tot);
+  render();
+};
+slider.addEventListener('mousedown', e => { dragging = true; sliderSeek(e.clientX); });
+window.addEventListener('mousemove', e => { if (dragging) sliderSeek(e.clientX); });
+window.addEventListener('mouseup', () => dragging = false);
+slider.addEventListener('touchstart', e => { 
+  dragging = true; 
+  sliderSeek(e.touches[0].clientX);
+  e.preventDefault();
+}, { passive: false });
+window.addEventListener('touchmove', e => { 
+  if (dragging) { 
+    sliderSeek(e.touches[0].clientX); 
+    e.preventDefault();
+  }
+}, { passive: false });
+window.addEventListener('touchend', () => dragging = false);
+
+window.addEventListener('keydown', e => {
+  if (!state.data || !document.getElementById('app').classList.contains('visible')) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') {
+    const tot = state.data.vehicle1.temps_s.length - 1;
+    state.frame = Math.min(state.frame + (e.shiftKey ? 10 : 1), tot);
+    render();
+  }
+  if (e.code === 'ArrowLeft') {
+    state.frame = Math.max(state.frame - (e.shiftKey ? 10 : 1), 0);
+    render();
+  }
+  if (e.code === 'Home') { state.frame = 0; render(); }
+  if (e.code === 'End') { state.frame = state.data.vehicle1.temps_s.length - 1; render(); }
+});
+
+const exportBtn = document.getElementById('btn-export');
+const exportPanel = document.getElementById('export-panel');
+exportBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  exportPanel.classList.toggle('open');
+});
+window.addEventListener('click', () => exportPanel.classList.remove('open'));
+document.querySelectorAll('.export-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const mode = item.dataset.export;
+    exportPanel.classList.remove('open');
+    if (mode.startsWith('screenshot')) doScreenshot(mode);
+    else if (mode.startsWith('video')) doVideoToggle(mode);
+  });
+});
+
+function doScreenshot(mode) {
+  const seq = state.data.sequence;
+  const t = state.data.vehicle1.temps_s[state.frame].toFixed(2);
+  if (mode === 'screenshot-both') {
+    const c1 = document.getElementById('canvas-v1');
+    const c2 = document.getElementById('canvas-v2');
+    const combined = document.createElement('canvas');
+    combined.width = c1.width + c2.width + 4;
+    combined.height = Math.max(c1.height, c2.height);
+    const cx = combined.getContext('2d');
+    cx.fillStyle = '#04070a'; cx.fillRect(0,0,combined.width,combined.height);
+    cx.drawImage(c1, 0, 0);
+    cx.drawImage(c2, c1.width + 4, 0);
+    combined.toBlob(b => downloadBlob(b, `${seq}_t${t}_combined.png`));
+  } else {
+    const id = mode === 'screenshot-v1' ? 'canvas-v1' : 'canvas-v2';
+    document.getElementById(id).toBlob(b => downloadBlob(b, `${seq}_t${t}_${id}.png`));
+  }
+}
+
+function doVideoToggle(mode) {
+  if (state.recording.active) { state.recording.recorder.stop(); return; }
+  const id = mode === 'video-v1' ? 'canvas-v1' : 'canvas-v2';
+  const canvas = document.getElementById(id);
+  const stream = canvas.captureStream(30);
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+  state.recording = { active: true, target: id, recorder, chunks: [] };
+  recorder.ondataavailable = e => { if (e.data.size > 0) state.recording.chunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(state.recording.chunks, { type: 'video/webm' });
+    downloadBlob(blob, `${state.data.sequence}_${id}.webm`);
+    state.recording = { active: false, target: null, recorder: null, chunks: [] };
+    exportBtn.style.background = ''; exportBtn.style.borderColor = '';
+  };
+  recorder.start();
+  exportBtn.style.background = '#ef4444'; exportBtn.style.borderColor = '#ef4444';
+  togglePlay(true);
+}
+
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+loadManifest();
+
+const leftPanel = document.getElementById('left-panel');
+const rightPanel = document.getElementById('right-panel');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+const mBtnBriques = document.getElementById('m-btn-briques');
+const mBtnTelem = document.getElementById('m-btn-telem');
+
+function closeAllDrawers() {
+  leftPanel.classList.remove('open');
+  rightPanel.classList.remove('open');
+  drawerBackdrop.classList.remove('show');
+  mBtnBriques.classList.remove('active');
+  mBtnTelem.classList.remove('active');
+}
+
+function openDrawer(side) {
+  closeAllDrawers();
+  if (side === 'left') {
+    leftPanel.classList.add('open');
+    mBtnBriques.classList.add('active');
+  } else {
+    rightPanel.classList.add('open');
+    mBtnTelem.classList.add('active');
+  }
+  drawerBackdrop.classList.add('show');
+}
+
+mBtnBriques.addEventListener('click', () => {
+  if (leftPanel.classList.contains('open')) closeAllDrawers();
+  else openDrawer('left');
+});
+mBtnTelem.addEventListener('click', () => {
+  if (rightPanel.classList.contains('open')) closeAllDrawers();
+  else openDrawer('right');
+});
+drawerBackdrop.addEventListener('click', closeAllDrawers);
+document.querySelectorAll('.drawer-close').forEach(btn => {
+  btn.addEventListener('click', closeAllDrawers);
+});
+
+let resizeTimeout;
+window.addEventListener('orientationchange', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    if (state.data) {
+      setupCanvases();
+      render();
+    }
+  }, 300);
+});
+</script>
+</body>
+</html>
